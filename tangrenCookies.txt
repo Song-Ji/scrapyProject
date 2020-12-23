@@ -1,0 +1,8 @@
+#LWP-Cookies-2.0
+Set-Cookie3: edGu_2132_checkfollow=1; path="/"; domain="tangren.co.nz"; path_spec; expires="2020-12-21 03:38:15Z"; version=0
+Set-Cookie3: edGu_2132_lastact="1608521152%09member.php%09logging"; path="/"; domain="tangren.co.nz"; path_spec; expires="2020-12-22 03:37:45Z"; version=0
+Set-Cookie3: edGu_2132_lastcheckfeed="25656%7C1608521152"; path="/"; domain="tangren.co.nz"; path_spec; expires="2021-12-21 03:37:45Z"; version=0
+Set-Cookie3: edGu_2132_lastvisit=1608517552; path="/"; domain="tangren.co.nz"; path_spec; expires="2021-01-20 03:37:45Z"; version=0
+Set-Cookie3: edGu_2132_saltkey=w7Raaeg5; path="/"; domain="tangren.co.nz"; path_spec; expires="2021-01-20 03:37:46Z"; httponly=None; version=0
+Set-Cookie3: edGu_2132_sid=JMhNe9; path="/"; domain="tangren.co.nz"; path_spec; expires="2020-12-22 03:37:45Z"; version=0
+Set-Cookie3: edGu_2132_ulastactivity=2a9ekB6qEDJ120FAs4Tb720ApDxDRs3q8KoEOcb9B8nRL4BImgOt; path="/"; domain="tangren.co.nz"; path_spec; expires="2021-12-21 03:37:45Z"; version=0
