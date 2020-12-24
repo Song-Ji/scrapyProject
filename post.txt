@@ -1,0 +1,49 @@
+
+
+
+# Login
+d.find_element_by_link_text('登陆').click()
+time.sleep(3)
+d.find_element_by_name('username').send_keys("tangren")
+# time.sleep(3)
+d.find_element_by_name('password').send_keys('jian1980_')
+# time.sleep(3)
+d.find_element_by_name('loginsubmit').click()
+
+#
+#
+# # 随机验证码
+# def yzm(len=6):
+#     code_list = []
+#     for i in range(10):  # 0-9数字
+#         code_list.append(str(i))
+#     for i in range(65, 91):  # 对应从“A”到“Z”的ASCII码
+#         code_list.append(chr(i))
+#     for i in range(97, 123):  # 对应从“a”到“z”的ASCII码
+#         code_list.append(chr(i))
+#         myslice = random.sample(code_list, len)  # 从list中随机获取6个元素，作为一个片断返回
+#         verification_code = ''.join(myslice)  # list to string
+#         return verification_code
+#
+
+
+# Post
+d.find_element_by_link_text('吐槽大汇').click()
+time.sleep(3)
+d.find_element_by_name('subject').send_keys('新西兰圣诞季将至，去哪里游玩???')
+time.sleep(3)
+d.find_element_by_name('message').send_keys('推荐去北岛灯塔游玩')
+time.sleep(3)
+d.find_element_by_id('spanButtonPlaceholder').click()
+time.sleep(3)
+
+#...
+app = pywinauto.Desktop()
+dlg = app['Open']
+dlg['File name(&N):Edit'].type_keys("D:\Desktop\cape-reinga.jpg")
+dlg['Open(&O)'].click()
+time.sleep(3)
+
+d.find_element_by_name('topicsubmit').click()
+# print("Element is visible? " + str(element_name.is_displayed()))
+time.sleep(3)

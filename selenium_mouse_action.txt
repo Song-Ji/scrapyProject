@@ -1,0 +1,11 @@
+鼠标悬停
+
+# Post
+d.find_element_by_link_text('吐槽大汇').click()
+time.sleep(3)
+mouse = d.find_element_by_id('newspecial')
+time.sleep(3)
+ActionChains(d).move_to_element(mouse).perform()
+time.sleep(3)
+
+                      
