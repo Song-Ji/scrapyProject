@@ -13,7 +13,7 @@ import pyodbc
 #file_path是access文件的绝对路径
 file_path = r'D:\Download\Database1.accdb'
 #host是新闻速递首页的url
-host = 'https://www.6parknews.com/newspark/index.php'
+# host = 'https://www.6parknews.com/newspark/index.php?p=3'
 headers = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'}
 #local_path是抓取图片存储的根目录
 local_path = 'D:\\Desktop\\img_news'
@@ -34,7 +34,7 @@ def mkdir(path):
 
 
 
-def get_urls():
+def get_urls(host):
 	url_list = []
 	"""从新闻速递首页获取文章URL"""
 	response = requests.get(host, headers)  # 发起网络请求，获得响应
@@ -55,33 +55,44 @@ def get_info(url):
 	response = requests.get(url, headers)  # 发起网络请求，获得响应
 	response.encoding = 'utf-8'  # 网页编码
 	soup = BeautifulSoup(response.text, 'html.parser')  # 使用BeautifulSoup解析，查找想要的内容。html.parser是熊内置的解析方案，可以不填会有warning
-	title = soup.find('h2', {'style': 'margin:15px;text-align:center;'}).text
-	# timestamp = soup.find('p', {'style': 'padding:5px;'}).text
-	# result = re.findall(".*于(.*)大.*", soup.find('p', {'style': 'padding:5px;'}).text)
-	timestamp = "".join(re.findall(".*于(.*)大.*", soup.find('p', {'style': 'padding:5px;'}).text)).rstrip()
+	title = soup.find('h2', {'style': 'margin:15px;text-align:center;'}).text.strip()
+	sub_title = soup.find('p', {'style': 'padding:5px;'}).text.strip().replace('\r', '').replace('\n', '').replace('\t', '')
+	timestamp = "".join(re.findall(".*于(.*)大.*", sub_title)).strip()
 	"""内容包含正文以及视频链接"""
-	content = get_vid_link(soup.find('div', {'id': 'shownewsc'}).findAll('iframe')) + soup.find('div', {'id': 'shownewsc'}).text
-	get_img(soup.find('div', {'id': 'shownewsc'}).findAll('img'), title)
+	content = get_vid_link(soup.find('div', {'id': 'shownewsc'}).findAll('iframe')) + soup.find('div', {'id': 'shownewsc'}).text.strip().replace("'","''")
+	get_img(soup.find('div', {'id': 'shownewsc'}).findAll('img'), title, url)
 	return {'url': url, 'title': title, 'date_publish': timestamp, 'content': content}
 
 
 
-def get_img(imgs, title_article):
+def get_img(imgs, title_article, url):
 	"""创建文章的文件夹保存图片"""
-	new_title_article = validateTitle(title_article)
-	folder_path = local_path + '\\' + new_title_article
-	if mkdir(folder_path):
-		for index, img in enumerate(imgs):
-			img_src = img.get('src')
-			if img_src[-3:] == 'gif':
-				img_name = folder_path+'\\'+str(index + 1)+'.gif'
-				urllib.request.urlretrieve(img_src, img_name)
-			elif img_src[-3:] == 'png':
-				img_name = folder_path+'\\'+str(index + 1)+'.png'
-				urllib.request.urlretrieve(img_src, img_name)
-			else:
-				img_name = folder_path+'\\'+str(index + 1)+'.jpg'
-				urllib.request.urlretrieve(img_src, img_name)
+	if imgs:
+		img_name = ''
+		# new_title_article = validateTitle(title_article)
+		folder_path = local_path + '\\' + url.split('=')[-1]
+		if mkdir(folder_path):
+			for index, img in enumerate(imgs):
+				img_src = img.get('src')
+				try:
+					if img_src[-3:] == 'gif':
+						img_name = folder_path+'\\'+str(index + 1)+'.gif'
+						urllib.request.urlretrieve(img_src, img_name)
+					elif img_src[-3:] == 'png':
+						img_name = folder_path+'\\'+str(index + 1)+'.png'
+						urllib.request.urlretrieve(img_src, img_name)
+					elif img_src[-4:] == 'jpeg':
+						img_name = folder_path+'\\'+str(index + 1)+'.jpeg'
+						urllib.request.urlretrieve(img_src, img_name)
+					else:
+						img_name = folder_path+'\\'+str(index + 1)+'.jpg'
+						urllib.request.urlretrieve(img_src, img_name)
+				except Exception as ex:
+					print("出现如下异常: %s" % ex)
+					print("文件下载保存到本地出错")
+					print("Img Src: "+ img_src)
+					print("Directory: " + img_name)
+					print("URL: "+ url)
 
 
 
@@ -91,17 +102,14 @@ def get_vid_link(vid_links):
 		for video in vid_links:
 			video_src = video.get('src')
 			video_links += video_src + '[v]'
-	else:
-		print('there is no video links in the article')
 	return video_links
 
 
-
-def validateTitle(title):
-	"""替换字符串中不能用于文件名的字符"""
-	rstr = r"[\/\\\:\*\?\"\<\>\|]"  # '/ \ : * ? " < > |'
-	new_title = re.sub(rstr, "_", title)  # 替换为下划线
-	return new_title
+# def validateTitle(title):
+# 	"""替换字符串中不能用于文件名的字符"""
+# 	rstr = r"[\/\\\:\*\?\"\<\>\|]"  # '/ \ : * ? " < > |'
+# 	new_title = re.sub(rstr, "_", title)  # 替换为下划线
+# 	return new_title
 
 
 
@@ -110,18 +118,29 @@ def save_info_to_db(info_list):
 	conn = pyodbc.connect(u'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ='+file_path)
 	cursor=conn.cursor()
 	#创建表格
-	cursor.execute("CREATE TABLE myTable(url Text, title Text, date_publish Text, content Memo)")
+	# cursor.execute("CREATE TABLE myTable(url Text, title Text, date_publish Text, content Memo)")
+	# conn.commit()
 	for info in info_list:
+		url = info.get('url')
+		title = info.get('title')
+		date_publish = info.get('date_publish')
+		content = info.get('content')
 		#sql query if the title is already in the table
-		result = cursor.execute("SELECT * FROM myTable WHERE url = '%s'" % (info.get('url')))
+		result = cursor.execute("SELECT * FROM myTable WHERE url = '%s'" % url)
 		data = result.fetchall()
-		if not data:
-			sql = "INSERT INTO myTable VALUES('%s', '%s', '%s', '%s')" % (info.get('url'), info.get('title'), info.get('date_publish'), info.get('content'))
-			cursor.execute(sql)
+		try:
+			if not data:
+				sql = "INSERT INTO myTable VALUES('%s', '%s', '%s', '%s')" % (url, title, date_publish, content)
+				cursor.execute(sql)
+				conn.commit()
+		except Exception as ex:
+			print("出现如下异常: %s" % ex)
+			print("数据保存失败")
+			print("Title: "+ title)
+			print("URL: "+ url)
 	# try:
 	# 	# 执行sql语句
 	# 	提交到数据库执行
-	conn.commit()
 	# except:
 	# 	# 如果发生错误则回滚
 	# conn.rollback()
@@ -138,42 +157,54 @@ def save_info_to_db(info_list):
 def main():
 	'''main function'''
 	info_list = []
-	for url in get_urls():
-		info_list.append(get_info(url))
-	save_info_to_db(info_list)
+	for page in range(1):
+		page += 1
+		host = 'https://www.6parknews.com/newspark/index.php?p=%d' % (page)
+		for url in get_urls(host):
+			info_list.append(get_info(url))
+		save_info_to_db(info_list)
+		info_list.clear()
+
+
+
+
+# def main():
+# 	'''main function'''
+# 	info_list = []
+# 	info_list.append(get_info('https://www.6parknews.com/newspark/view.php?app=news&act=view&nid=461013'))
+# 	save_info_to_db(info_list)
 
 
 
 if __name__ == '__main__':
 	main()
 
-# string = "新闻来源: 中国日报 于2021-01-11 0:14:26        大字阅读 提示:新闻观点不代表本网立场"
-# result = re.findall(".*于(.*)大.*",string)
+# ss = "https://www.6parknews.com/newspark/view.php?app=news&act=view&nid=461055"
+# s = ss.split('=')
+# print(s)
+# print(s[-1])
 
-# result= "".join(re.findall(".*于(.*)大.*",string)).rstrip()
-
-# print(len(result))
-
-# print(result)
-
-
-
-
-
+# def st():
+# 	for page in range(50):
+# 		page+=1
+# 		host= 'https://www.6parknews.com/newspark/index.php?p=%d' % (page)
+# 		print(host)
+# st()
 
 # def test():
+# 	'''将获取到的文章信息存储到数据库'''
 # 	conn = pyodbc.connect(u'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ='+file_path)
 # 	cursor=conn.cursor()
 # 	#创建表格
-# 	# cursor.execute("CREATE TABLE myTable(url Text, title Text, date_publish Text, content Memo)")
-# 	# result = cursor.execute("SELECT * FROM myTable WHERE url = '%s'" % ("sss"))
-# 	# data = result.fetchall()
-# 	cursor.execute("drop table myTable")
-# 	# for info in info_list:
-# 	# 	#sql query if the title is already in the table
-# 	# 	if "SELECT * FROM myTable WHERE url = '%s'" % (info.get('url')) is None:
-# 	# 		sql = "INSERT INTO myTable VALUES('%s', '%s', '%s', '%s')" % (info.get('url'), info.get('title'), info.get('date_publish'), info.get('content'))
-# 	# 		cursor.execute(sql)
+# 	info_list = [{'url': 'sss', 'title':'sss', 'date_publish':'sss','content':'sss'}]
+# 	cursor.execute("CREATE TABLE myTable(url Text, title Text, date_publish Text, content Memo)")
+# 	for info in info_list:
+# 		#sql query if the title is already in the table
+# 		result = cursor.execute("SELECT * FROM myTable WHERE url = '%s'" % (info.get('url')))
+# 		data = result.fetchall()
+# 		if not data:
+# 			sql = "INSERT INTO myTable VALUES('%s', '%s', '%s', '%s')" % (info.get('url'), info.get('title'), info.get('date_publish'), info.get('content'))
+# 			cursor.execute(sql)
 # 	conn.commit()
 # 	cursor.close()
 # 	conn.close()
@@ -181,11 +212,12 @@ if __name__ == '__main__':
 
 
 
-# dic = get_info('https://www.6parknews.com/newspark/view.php?app=news&act=view&nid=460373')
+# dic = get_info('https://www.6parknews.com/newspark/view.php?app=news&act=view&nid=460994')
 
 
-# str = test('https://www.6parknews.com/newspark/view.php?app=news&act=view&nid=460358')
-# print(str)
+
+# string = 'jisong。。。'.replace('。。。','')
+# print(string)
 
 
 # t = 'jisong'
