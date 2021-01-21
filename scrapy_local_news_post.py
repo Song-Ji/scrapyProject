@@ -39,29 +39,30 @@ def login():
 #         return verification_code
 
 
-def connect_db_read_post(host, directory):
-	#host是图片保存的根目录
+def connect_db_read_post():
 	#链接数据库
 	#db_path是access文件的绝对路径
 	db_path = r'D:\Download\Database1.accdb'
-	conn = pyodbc.connect(u'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ='+db_path)
+	conn = pyodbc.connect(u'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ='+ db_path)
 	#创建游标
 	cursor = conn.cursor()
 	try:
-		cur = cursor.execute("SELECT * FROM skykiwi_forum_room_rent WHERE published = 0")
+		cur = cursor.execute("SELECT * FROM local_news_cn_table WHERE published = 0")
 		# 获取数据库中表的全部数据
 		data = cur.fetchall()
 		if data:
-			d = open_Driver(host)
+			d = open_Driver()
 			for row in data:
 				url = row[0]
 				title = row[1]
-				sub_title = row[2]
-				post_message = row[3]
+				date_publish = row[2]
+				source = row[3]
+				original_author = row[4]
+				content = row[5]
 				try:
-					post(d, host, directory ,url, title, sub_title, post_message)
+					post(d, url, title, date_publish, source, original_author, content)
 					try:
-						cursor.execute("UPDATE skykiwi_forum_room_rent SET published = -1 WHERE url = '%s'" % url)
+						cursor.execute("UPDATE local_news_cn_table SET published = -1 WHERE url = '%s'" % url)
 						conn.commit()
 						print(url + " 文章已经发表到网站且数据库已经更新发表状态")
 					except Exception as ex:
@@ -71,7 +72,7 @@ def connect_db_read_post(host, directory):
 					print("出现如下异常: %s" % ex)
 					print(url + " 文章发表到网站失败")
 		else:
-			print("当前数据库表格中所有帖子均被发表")
+			print("当前数据库表中所有文章均被发表")
 	except Exception as ex:
 		print("出现如下异常: %s" % ex)
 		print("Error: ubale to fetch data")
@@ -90,33 +91,58 @@ def windows_pop_up(file_name):
 
 
 
-def post(d, host, directory, url, title, sub_title, post_message):
-	directory = directory + '\\' + url.split('=')[-2][:-6]
+def post(d, url, title, date_publish, source, original_author, content):
+	directory = r"D:\Desktop\img_local_news" + '\\' + url.split('/')[-2]
+	c = 1
 	cc = 1
-	d.find_element_by_name('subject').send_keys(title)
+	# d.get('http://tangren.co.nz/portal.php?mod=portalcp&ac=article&catid=5')
+	# time.sleep(5)
+	# d.maximize_window()
+
+	d.find_element_by_name('title').send_keys(title)
 	time.sleep(3)
-	ActionChains(d).move_to_element_with_offset(d.find_element_by_xpath('//*[@id="e_iframe"]'), 1034, 363).click().send_keys(sub_title).send_keys(Keys.ENTER).send_keys(post_message).send_keys(Keys.ENTER).perform()
+	d.find_element_by_name('from').send_keys(source)
+	time.sleep(3)
+	d.find_element_by_name('fromurl').send_keys(url)
+	time.sleep(3)
+	d.find_element_by_xpath('//*[@id="articleform"]/div[4]/div[2]/dl/dd[3]/input').send_keys(original_author)
+	time.sleep(3)
+	d.find_element_by_name('dateline').send_keys(date_publish)
+	time.sleep(3)
+
+	ActionChains(d).move_to_element_with_offset(d.find_element_by_xpath('//*[@id="uchome-ifrHtmlEditor"]'), 379.25, 14).click().perform()
 	time.sleep(3)
 
 	if get_file_name(directory):
-		d.find_element_by_xpath('//*[@id="e_image"]').click()
-		time.sleep(3)
 		for file_name in get_file_name(directory):
 			if cc < 5:
-				e = d.find_element_by_id('imgSpanButtonPlaceholder').click()
+				ActionChains(d).move_to_element(d.find_element_by_id('imgSpanButtonPlaceholder')).click().perform()
 				time.sleep(5)
 				windows_pop_up(file_name)
 			else:
 				break
 			cc += 1
-		if d.find_elements_by_xpath('//*[contains(@id, "image_td_")]'):
-			for element in d.find_elements_by_xpath('//*[contains(@id, "image_td_")]'):
+		for element in d.find_elements_by_xpath('//*[contains(@id, "attach_list_")]'):
+			if c == 1:
 				element.find_element_by_tag_name('img').click()
-				time.sleep(3)
+				time.sleep(5)
+				element.find_element_by_tag_name('input').click()
+				time.sleep(5)
+				ActionChains(d).move_to_element_with_offset(d.find_element_by_xpath('//*[@id="uchome-ifrHtmlEditor"]'), 1000, 350).click().send_keys(Keys.ENTER).send_keys(content).send_keys(Keys.ENTER).perform()
+				time.sleep(5)
+			else:
+				element.find_element_by_tag_name('img').click()
+				time.sleep(5)
+			c += 1
+	else:
+		ActionChains(d).move_to_element_with_offset(d.find_element_by_xpath('//*[@id="uchome-ifrHtmlEditor"]'), 1000, 350).click().send_keys(content).perform()
+		time.sleep(5)
 
-	d.find_element_by_id('postsubmit').click()
+	d.find_element_by_xpath('//*[@id="issuance"]/strong').click()
 	time.sleep(5)
-	d.get(host)
+	d.find_element_by_link_text('继续发布新文章').click()
+	time.sleep(5)
+
 
 # def validateTitle(title):
 # 	"""替换字符串中不能用于文件名的字符"""
@@ -134,11 +160,11 @@ def get_file_name(directory):
 			file_name_list.append(file_name)
 	return file_name_list
 
-def open_Driver(host):
+def open_Driver():
 	# chrome_options = Options()
 	# chrome_options.add_experimental_option("detach", True)
 	d = webdriver.Chrome()
-	d.get(host)
+	d.get('http://tangren.co.nz/portal.php?mod=portalcp&ac=article&catid=4')
 	d.maximize_window()
 	time.sleep(5)
 	d.find_element_by_xpath('//*[@id="toptb"]/div/div[2]/div/div/div/ul/li[1]/a').click()
@@ -155,10 +181,13 @@ def open_Driver(host):
 
 def main():
 	'''main function'''
-	host = 'http://tangren.co.nz/forum.php?mod=post&action=newthread&fid=42'
-	directory = r"D:\Desktop\img_skykiwi_forum\租房中心"
-	connect_db_read_post(host, directory)
+	connect_db_read_post()
+
 
 
 if __name__ == '__main__':
 	main()
+
+
+
+
